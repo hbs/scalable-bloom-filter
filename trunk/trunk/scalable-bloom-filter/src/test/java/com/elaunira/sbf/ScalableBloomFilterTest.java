@@ -3,8 +3,11 @@ package com.elaunira.sbf;
 import junit.framework.Assert;
 
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
+ * Tests associated to {@link ScalableBloomFilter}.
  * 
  * @author Laurent Pellegrino
  *
@@ -12,24 +15,27 @@ import org.junit.Test;
  */
 public class ScalableBloomFilterTest extends AbstractBloomFilterTest {
 	
+	private static final Logger logger = 
+		LoggerFactory.getLogger(ScalableBloomFilterTest.class);
+	
 	@Test
 	public void testFalsePositiveRate() {
+		final int nbElementsToInsert = 1000000;
+		
 		for (double errorRate : errorRates) {
 			ScalableBloomFilter<Integer> bf = 
-				new ScalableBloomFilter<Integer>(1000, errorRate);
+				new ScalableBloomFilter<Integer>(100, errorRate);
 			
-			for (int i=0; i<10000; i++) {
+			for (int i=0; i<nbElementsToInsert; i++) {
 				bf.add(i);
 			}
 			
-			System.out.println(bf);
+			logger.info(bf.toString());
 			
 			Assert.assertTrue(bf.contains(0));
-			Assert.assertFalse(bf.contains(bf.getCapacity()));
-			Assert.assertTrue(bf.size() <= bf.getCapacity());
 			Assert.assertTrue(
-					getFalsePositiveRate(bf, 10000) 
-						< bf.getFalsePositiveProbability());
+					getFalsePositiveRate(bf, nbElementsToInsert) 
+						<= bf.getFalsePositiveProbability());
 		}
 	}
 	
