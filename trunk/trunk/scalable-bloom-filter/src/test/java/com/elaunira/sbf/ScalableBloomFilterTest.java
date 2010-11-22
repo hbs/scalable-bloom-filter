@@ -39,4 +39,10 @@ public class ScalableBloomFilterTest extends AbstractBloomFilterTest {
 		}
 	}
 	
+	@Test
+	public void testSizeAfterSerialization() {
+		super.testSizeAfterSerialization(
+				new ScalableBloomFilter<String>(1000, 0.1));
+	}
+	
 }

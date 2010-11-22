@@ -1,31 +1,38 @@
 package com.elaunira.sbf;
 
 import java.io.Serializable;
+import java.util.Iterator;
 
 /**
  * A probabilistic "shadow" of a set of elements, useful when the set itself
  * would be too expensive to maintain in memory and query directly. A Bloom
  * filter can give false positives, but never false negatives. That is, adding
  * an element to the filter guarantees that {@link #contains} will return
- * {@code true}, but {@link #contains} returning {@code true} does not
- * guarantee that this element was ever actually added to the filter.
+ * {@code true}, but {@link #contains} returning {@code true} does not guarantee
+ * that this element was ever actually added to the filter.
+ * <p>
+ * This Bloom filter has a key/value behavior. When a new key is added, you can
+ * specify a value you want to append to the list of values associated to the
+ * key. Therefore, when a {@link #contains} operation is performed, you will
+ * have the possibility to iterate over the list of values associated to the key
+ * whether this one is contained by the Bloom filter.
  * 
  * @author Laurent Pellegrino
  * 
  * @version $Id$
  */
-public abstract class BloomFilter<E> implements Serializable {
+public abstract class KeyValueBloomFilter<K, V> implements Serializable {
 
 	private static final long serialVersionUID = 1L;
 
 	// the number of elements this filter can support
 	// without to transcend the falsePositiveProbability
-	protected final int capacity;
+	protected int capacity;
 
 	// the maximum false positives probability allowed
-	protected final double falsePositiveProbability;
+	protected double falsePositiveProbability;
 	
-	public BloomFilter(int capacity, double falsePositiveProbability) {
+	public KeyValueBloomFilter(int capacity, double falsePositiveProbability) {
 		if (capacity <= 0) {
 			throw new IllegalArgumentException("capacity must be strict positive");
 		}
@@ -44,13 +51,16 @@ public abstract class BloomFilter<E> implements Serializable {
 	 * {@code elt} already exists in this filter it will return
 	 * {@code true}, otherwise {@code false}.
 	 * 
-	 * @param elt
+	 * @param key
 	 *            the element to add to the bloom filter.
+	 * 
+	 * @param value
+	 * 			  the value to associate to the key.
 	 * 
 	 * @return {@code true} if the element to add is already contained,
 	 *         otherwise {@code false}.
 	 */
-	public abstract boolean add(E elt);
+	public abstract boolean add(K key, V value);
 
 	/**
 	 * Returns {@code true} if it is <i>possible</i> (probability nonzero) that
@@ -60,7 +70,7 @@ public abstract class BloomFilter<E> implements Serializable {
 	 * <i>not</i> actually been added is given by
 	 * {@link #getFalsePositiveProbability()}.
 	 * 
-	 * @param elt
+	 * @param key
 	 *            the element to check in the Bloom filter.
 	 * 
 	 * @return {@code true} if it is <i>possible</i> (probability nonzero) that
@@ -70,7 +80,7 @@ public abstract class BloomFilter<E> implements Serializable {
 	 *         probability that this element has <i>not</i> actually been added
 	 *         is given by {@link #getFalsePositiveProbability()}.
 	 */
-	public abstract boolean contains(E elt);
+	public abstract Iterator<V> contains(K key);
 
 	/**
 	 * Returns the number of unique elements which have been added to the bloom
