@@ -23,7 +23,7 @@ public abstract class BloomFilter<E> implements Serializable {
 	protected int capacity;
 
 	// the maximum false positives probability allowed
-	protected final double falsePositiveProbability;
+	protected double falsePositiveProbability;
 	
 	public BloomFilter(int capacity, double falsePositiveProbability) {
 		if (capacity <= 0) {
@@ -80,7 +80,7 @@ public abstract class BloomFilter<E> implements Serializable {
 	 *         filter.
 	 */
 	public abstract int size();
-	
+
 	/**
 	 * Returns the capacity of the Bloom filter (i.e. the maximum number of
 	 * elements the Bloom filter can store without exceed the false positive
@@ -88,14 +88,15 @@ public abstract class BloomFilter<E> implements Serializable {
 	 * 
 	 * @return the capacity of the Bloom filter (i.e. the maximum number of
 	 *         elements the Bloom filter can store without exceed the false
-	 *         positive probability).
+	 *         positive probability). A value equals to {@code -1} means that
+	 *         the filter has an infinite capacity (greedy).
 	 */
 	public int getCapacity() {
 		return this.capacity;
 	}
 
 	/**
-	 * Returns the probability that {@link SlicedBloomFilter#contains(String)} will
+	 * Returns the probability that {@link SlicedBloomFilterA#contains(String)} will
 	 * return {@code true} for an element not actually contained in this set.
 	 * 
 	 * @return the probability that {@link #contains(String)} will return

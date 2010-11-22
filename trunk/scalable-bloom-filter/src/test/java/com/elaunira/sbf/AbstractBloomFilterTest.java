@@ -2,7 +2,7 @@ package com.elaunira.sbf;
 
 
 /**
- * Test the bloom filters implementation.
+ * Some useful values and methods to test the Bloom filters implementations.
  *
  * @author Laurent Pellegrino
  *

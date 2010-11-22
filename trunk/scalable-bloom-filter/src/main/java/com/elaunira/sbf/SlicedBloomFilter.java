@@ -32,13 +32,13 @@ public class SlicedBloomFilter<E> extends BloomFilter<E> {
 	
 	// the number of slices to use (equals to the number 
 	// of hash function to use)
-	private final int slicesCount;
+	private int slicesCount;
 	
 	// the number of bits per slice
-	private final int bitsPerSlice;
+	private int bitsPerSlice;
 	
 	// the set containing the values for each slice
-	private final BitSet filter;
+	private BitSet filter;
 
 	// the number of elements added in the Bloom filter
 	private int count;
@@ -58,52 +58,16 @@ public class SlicedBloomFilter<E> extends BloomFilter<E> {
 	public SlicedBloomFilter(int capacity, double falsePositiveProbability) {
 		super(capacity, falsePositiveProbability);
 		
-		if (capacity < 4 / falsePositiveProbability) {
-			throw new IllegalArgumentException(
-					"the capacity must be >= inferior than 4 / falsePositiveProbability (rule of thumb).");
-		}
+		this.slicesCount = 
+			(int) (Math.ceil(
+						Math.log(1 / falsePositiveProbability) / Math.log(2)));
 		
-		int[] bounds = this.computeBounds(capacity, falsePositiveProbability);
-		
-		super.capacity = bounds[2];
-		this.slicesCount = bounds[0];
-		this.bitsPerSlice = bounds[1];
-		this.filter = new BitSet(this.slicesCount * this.bitsPerSlice);
-	}
-	
-	public SlicedBloomFilter(int capacity, double falsePositiveProbability, int slicesCount) {
-		super(capacity, falsePositiveProbability);
-		double k = Math.ceil(Math.log(1 / (double) falsePositiveProbability) / Math.log(2));
-		double p = Math.pow(falsePositiveProbability, 1 / (double) k);
-		int mb = slicesCount;
-		
-		int m = 1 << mb;
-		
-		int n = 
-				(int) (Math.log(1 - p) / Math.log(1 - 1 / (double) m));
-		
-		super.capacity = (int) n;
-		this.slicesCount = slicesCount;
-		this.bitsPerSlice = 1 << slicesCount;
-		this.filter = new BitSet(this.slicesCount * this.bitsPerSlice);
-	}
-	
-	private int[] computeBounds(int capacity, double falsePositiveProbability) {
-		double k = 
-			Math.ceil(
-				Math.log(1 / (double) falsePositiveProbability) / Math.log(2));
-		
-		double p = 
-			Math.pow(falsePositiveProbability, 1 / (double) k);
-		
-		int mb = 
+		this.bitsPerSlice = 
 			(int) Math.ceil(
-					- (Math.log(1 - Math.pow(1 - p, 1 / (double) capacity)) / Math.log(2)));
-		
-		int m = 1 << mb;
-		int n = (int) (Math.log(1 - p) / Math.log(1 - 1 / (double) m));
-		
-		return new int[] {mb, m, n};
+					(2 * capacity * Math.abs(Math.log(falsePositiveProbability))) 
+						/ (this.slicesCount * Math.pow(Math.log(2), 2)));
+
+		this.filter = new BitSet(this.slicesCount * this.bitsPerSlice);
 	}
 	
 	/**
@@ -167,26 +131,6 @@ public class SlicedBloomFilter<E> extends BloomFilter<E> {
 		
 		return true;
 	}
-
-	/**
-	 * Returns a boolean indicating if the Bloom filter has reached its maximal
-	 * capacity.
-	 * 
-	 * @return {@code true} whether the Bloom filter has reached its maximal
-	 *         capacity, {@code false} otherwise.
-	 */
-	public boolean isFull() {
-		return this.count >= this.capacity;
-	}
-	
-	/**
-	 * Returns the number of elements added in this Bloom filter.
-	 * 
-	 * @return the number of elements added in this Bloom filter.
-	 */
-	public int size() {
-		return this.count;
-	}
 	
 	/**
 	 * Returns {@code hashCount} hashes for the specified {@code key} by
@@ -228,18 +172,52 @@ public class SlicedBloomFilter<E> extends BloomFilter<E> {
 		}
 		return result;
 	}
+
+	/**
+	 * Returns a boolean indicating if the Bloom filter has reached its maximal
+	 * capacity.
+	 * 
+	 * @return {@code true} whether the Bloom filter has reached its maximal
+	 *         capacity, {@code false} otherwise.
+	 */
+	public boolean isFull() {
+		return this.count > this.capacity;
+	}
 	
+	/**
+	 * Returns the number of elements added in this Bloom filter.
+	 * 
+	 * @return the number of elements added in this Bloom filter.
+	 */
+	public int size() {
+		return this.count;
+	}
+	
+	/**
+	 * Returns the number of bits per slice.
+	 * 
+	 * @return the number of bits per slice.
+	 */
 	public int getBitsPerSlice() {
 		return bitsPerSlice;
 	}
 	
+	/**
+	 * Returns the number of slices associated to this filter.
+	 * 
+	 * @return the number of slices associated to this filter.
+	 */
 	public int getSlicesCount() {
 		return slicesCount;
 	}
 	
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public String toString() {
-		return super.toString() + "[slicesCount=" + this.slicesCount + ", bitsPerSlice=" + this.bitsPerSlice + "]";
+		return super.toString() + 
+			"[slicesCount=" + this.slicesCount + ", bitsPerSlice=" + this.bitsPerSlice + "]";
 	}
 
 }

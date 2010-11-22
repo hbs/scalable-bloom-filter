@@ -4,13 +4,13 @@ import java.util.Iterator;
 import java.util.LinkedList;
 
 /**
- * Scalable Bloom Filter is an implementation of a SBF as described
- * in the original paper entitled 
- * <a href="http://asc.di.fct.unl.pt/~nmp/pubs/ref--04.pdf">Scalable Bloom Filters</a>.
+ * Scalable Bloom Filter is an implementation of a SBF as described in the
+ * original paper entitled <a
+ * href="http://asc.di.fct.unl.pt/~nmp/pubs/ref--04.pdf">Scalable Bloom
+ * Filters</a>.
  * <p>
- * This implementation is greatly inspired from the Erlang 
- * version developed by <em>Paulo SŽrgio Almeida<em>, available 
- * at {@link http://sites.google.com/site/scalablebloomfilters/}.
+ * This implementation is greatly inspired from the Python version available at
+ * {@link https://github.com/jaybaird/python-bloomfilter}.
  * 
  * @author Laurent Pellegrino
  * 
@@ -45,23 +45,17 @@ public class ScalableBloomFilter<E> extends BloomFilter<E> {
 		this(Mode.SMALL_SET_GROWTH, 0.9, 100, 0.001);
 	}
 	
-	public ScalableBloomFilter(int capacity, double falsePositiveProbability) {
-		this(Mode.SMALL_SET_GROWTH, 0.9, capacity, falsePositiveProbability);
+	public ScalableBloomFilter(int initialCapacity, double falsePositiveProbability) {
+		this(Mode.SMALL_SET_GROWTH, 0.9, initialCapacity, falsePositiveProbability);
 	}
 	
 	public ScalableBloomFilter(Mode mode, double ratio, int capacity, double falsePositiveProbability) {
 		super(capacity, falsePositiveProbability);
 		
-		if (capacity < 4 / (falsePositiveProbability * (1 - ratio))) {
-			throw new IllegalArgumentException(
-					"the capacity must be >= than 4 / (falsePositiveProbability * (1 - ratio) (rule of thumb).");
-		}
-		
 		this.ratio = ratio;
 		this.scale = mode;
 		
 		this.filters = new LinkedList<SlicedBloomFilter<E>>();
-		this.filters.add(new SlicedBloomFilter<E>(capacity, falsePositiveProbability * (1 - ratio)));
 	}
 
 	/**
@@ -72,12 +66,12 @@ public class ScalableBloomFilter<E> extends BloomFilter<E> {
 			return true;
 		}
 		
-		if (this.filters.getLast().isFull()) {
+		if (this.filters.isEmpty() 
+				|| this.filters.getLast().isFull()) {
 			this.filters.add(
 					new SlicedBloomFilter<E>(
-							this.filters.getLast().getCapacity(), 
-							this.falsePositiveProbability * this.ratio, 
-							this.filters.getLast().getSlicesCount() + this.scale.value));
+							(int) (super.capacity * Math.pow(this.scale.value, this.filters.size())),
+									falsePositiveProbability * Math.pow(this.ratio, this.filters.size())));
 		}
 		
 		this.filters.getLast().addWithoutCheck(elt);
@@ -115,20 +109,25 @@ public class ScalableBloomFilter<E> extends BloomFilter<E> {
 	 * {@inheritDoc}
 	 */
 	public int getCapacity() {
-		int capacity = 0;
-		for (SlicedBloomFilter<E> bf : this.filters) {
-			capacity += bf.getCapacity();
-		}
-		return capacity;
+		return -1;
 	}
 
+	/**
+	 * Returns the initial capacity of the filter when it has been created.
+	 * 
+	 * @return the initial capacity of the filter when it has been created.
+	 */
+	public int getInitialCapacity() {
+		return super.capacity;
+	}
+	
 	/**
 	 * Returns the tightening ratio of error probability.
 	 * 
 	 * @return the tightening ratio of error probability.
 	 */
 	public double getRatio() {
-		return ratio;
+		return this.ratio;
 	}
 	
 	/**
@@ -137,7 +136,17 @@ public class ScalableBloomFilter<E> extends BloomFilter<E> {
 	 * @return the growth ratio value used when a new filter has to be appended.
 	 */
 	public Mode getScale() {
-		return scale;
+		return this.scale;
+	}
+	
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String toString() {
+		return 
+			super.toString() 
+				+ "[ratio=" + this.ratio + ", scale=" + this.scale.value + "]";
 	}
 	
 }
