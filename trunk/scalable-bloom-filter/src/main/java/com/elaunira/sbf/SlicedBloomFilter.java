@@ -1,9 +1,10 @@
 package com.elaunira.sbf;
 
-import java.io.UnsupportedEncodingException;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.util.BitSet;
-
-import com.elaunira.sbf.hash.Murmur2;
+import java.util.zip.GZIPOutputStream;
 
 /**
  * This bloom filter is a variant of a classical bloom filter as explained in
@@ -32,13 +33,13 @@ public class SlicedBloomFilter<E> extends BloomFilter<E> {
 	
 	// the number of slices to use (equals to the number 
 	// of hash function to use)
-	private int slicesCount;
+	private final int slicesCount;
 	
 	// the number of bits per slice
-	private int bitsPerSlice;
+	private final int bitsPerSlice;
 	
 	// the set containing the values for each slice
-	private BitSet filter;
+	private final BitSet filter;
 
 	// the number of elements added in the Bloom filter
 	private int count;
@@ -59,13 +60,12 @@ public class SlicedBloomFilter<E> extends BloomFilter<E> {
 		super(capacity, falsePositiveProbability);
 		
 		this.slicesCount = 
-			(int) (Math.ceil(
-						Math.log(1 / falsePositiveProbability) / Math.log(2)));
+			BloomFilterUtil.computeSlicesCount(
+					capacity, falsePositiveProbability);
 		
 		this.bitsPerSlice = 
-			(int) Math.ceil(
-					(2 * capacity * Math.abs(Math.log(falsePositiveProbability))) 
-						/ (this.slicesCount * Math.pow(Math.log(2), 2)));
+			BloomFilterUtil.computeBitsPerSlice(
+					capacity, falsePositiveProbability, this.slicesCount);
 
 		this.filter = new BitSet(this.slicesCount * this.bitsPerSlice);
 	}
@@ -99,7 +99,7 @@ public class SlicedBloomFilter<E> extends BloomFilter<E> {
 		}
 		
 		int[] hashes = 
-			getHashBuckets(
+			BloomFilterUtil.getHashBuckets(
 					Integer.toString(elt.hashCode()), 
 					this.slicesCount, this.bitsPerSlice);
 		
@@ -117,7 +117,7 @@ public class SlicedBloomFilter<E> extends BloomFilter<E> {
 	 */
 	public boolean contains(E elt) {
 		int[] hashes = 
-			getHashBuckets(
+			BloomFilterUtil.getHashBuckets(
 					Integer.toString(elt.hashCode()),
 					this.slicesCount, this.bitsPerSlice);
 		
@@ -132,47 +132,6 @@ public class SlicedBloomFilter<E> extends BloomFilter<E> {
 		return true;
 	}
 	
-	/**
-	 * Returns {@code hashCount} hashes for the specified {@code key} by
-	 * using only one hash function. Indeed, we can derive as many hash values
-	 * as you need as a linear combination of two without compromising the
-	 * performance of a Bloom filter. This is explained in the paper entitled <a
-	 * href="http://www.eecs.harvard.edu/~kirsch/pubs/bbbf/esa06.pdf">Less
-	 * Hashing, Same Performance: Building a Better Bloom Filter</a> by <em>Adam
-	 * Kirsch</em> and <em>Michael Mitzenmacher</em>.
-	 * <p>
-	 * The hash function used for it is the Murmur 2 hash function which is
-	 * reputed for being really fast.
-	 * 
-	 * @param key
-	 *            the value to hash.
-	 * 
-	 * @param hashCount
-	 *            the number of hashes wished.
-	 * 
-	 * @param max
-	 *            value used to restrict the hash values obtained in the [0;
-	 *            max[ range.
-	 * 
-	 * @return {@code hashCount} hashes for the specified {@code key} by
-	 *         using only one hash function.
-	 */
-	public static int[] getHashBuckets(String key, int hashCount, int max) {
-		byte[] b;
-		try {
-			b = key.getBytes("UTF-16");
-		} catch (UnsupportedEncodingException e) {
-			throw new RuntimeException(e);
-		}
-		int[] result = new int[hashCount];
-		int hash1 = Murmur2.hash32(b, 0);
-		int hash2 = Murmur2.hash32(b, hash1);
-		for (int i = 0; i < hashCount; i++) {
-			result[i] = Math.abs((hash1 + i * hash2) % max);
-		}
-		return result;
-	}
-
 	/**
 	 * Returns a boolean indicating if the Bloom filter has reached its maximal
 	 * capacity.
@@ -218,6 +177,20 @@ public class SlicedBloomFilter<E> extends BloomFilter<E> {
 	public String toString() {
 		return super.toString() + 
 			"[slicesCount=" + this.slicesCount + ", bitsPerSlice=" + this.bitsPerSlice + "]";
+	}
+
+	private void writeObject(ObjectOutputStream out) throws IOException {
+		GZIPOutputStream gzipos = new GZIPOutputStream(out);
+		ObjectOutputStream oos = new ObjectOutputStream(gzipos);
+		
+		oos.writeInt(super.capacity);
+		oos.writeDouble(super.falsePositiveProbability);
+		oos.writeObject(this.filter);
+	}
+
+	private void readObject(ObjectInputStream in) throws IOException,
+			ClassNotFoundException {
+
 	}
 
 }
